@@ -8,6 +8,31 @@ export class UserService {
         return `/${environment}/users`;
     }
 
+    raw(method: string, url: string, body: unknown) {
+        // @ts-ignore
+        return cy.request({
+            method,
+            url,
+            body,
+            headers: { 'Content-Type': 'application/json' },
+            failOnStatusCode: false,
+        });
+    }
+
+    rawText(method: string, url: string, body: string) {
+        return cy.request({
+            method,
+            url,
+            body,
+            headers: { 'Content-Type': 'application/json' },
+            failOnStatusCode: false,
+        });
+    }
+
+    get baseEndpoint(): string {
+        return this.endpoint;
+    }
+
     getAll() {
         return cy.request({
             method: 'GET',

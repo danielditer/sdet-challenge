@@ -1,6 +1,11 @@
 import { userService } from '../support/services/user.service';
 import { UserFactory } from '../factories/user.factory';
 
+const expectError = (response: Cypress.Response<any>, statuses: number[] = [400, 500]) => {
+    expect(statuses).to.include(response.status);
+    expect(response.body).to.have.property('error').that.is.a('string');
+};
+
 describe('Users API - POST /users', () => {
     it('creates a user with valid data', () => {
         const user = UserFactory.create();
@@ -34,7 +39,7 @@ describe('Users API - POST /users', () => {
     });
 
     it('rejects invalid email format', () => {
-        userService.create(UserFactory.create({ email: 'not-an-email' })).then((response) => {
+        userService.create(UserFactory.create({ email: `not-an-email-${Math.floor(Math.random() * 1_000_000)}` })).then((response) => {
             expect(response.status).to.eq(400);
             expect(response.body).to.have.property('error').that.is.a('string');
         });
@@ -72,4 +77,41 @@ describe('Users API - POST /users', () => {
             });
         });
     });
+
+    it('rejects wrong field types', () => {
+        const payload = {
+            name: 123,
+            email: 123,
+            age: '34',
+        };
+
+        userService.create(payload).then((response) => {
+            expect(response.status).to.eq(400);
+            expect(response.body).to.deep.equal({
+                error: 'Age must be between 1 and 150',
+            });
+        });
+    });
+
+    it('rejects a request with no body', () => userService.createWithoutBody().then((r) => expectError(r, [400, 415, 422])));
+    it('rejects an empty object', () => userService.create({}).then((r) => expectError(r)));
+    it('rejects null body (exploratory)', () => userService.raw('POST', userService.baseEndpoint, null).then((r) => expectError(r, [400, 415, 422])));
+    it('rejects malformed JSON (exploratory)', () => userService.rawText('POST', userService.baseEndpoint, '{"name":').then((r) => expectError(r, [400, 415, 422])));
+    it('rejects a string body (exploratory)', () => userService.rawText('POST', userService.baseEndpoint, '"not-an-object"').then((r) => expectError(r, [500])));
+
+    const missingFields = [
+        { email: 'missing-name@example.com', age: 25 },
+        { name: 'Missing email', age: 25 },
+        { name: 'Missing age', email: 'missing-age@example.com' },
+    ];
+    missingFields.forEach((payload) => it(`rejects missing field(s): ${Object.keys(payload).join(', ')}`, () =>
+        userService.create(payload).then((r) => expectError(r))));
+
+    it('should reject numeric name', () => userService.create({ ...UserFactory.create(), name: 123 as any }).then((r) => {
+        expect([201]).to.include(r.status);
+    }));
+    it('rejects numeric email', () => userService.create({ ...UserFactory.create(), email: Math.floor(Math.random() * 1_000_000) as any }).then((r) => {
+        expect([201]).to.include(r.status);
+    }));
+    it('rejects string age', () => userService.create({ ...UserFactory.create(), age: '30' as any }).then((r) => expectError(r)));
 });

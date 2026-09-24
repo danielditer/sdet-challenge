@@ -70,4 +70,31 @@ describe('Users API - PUT /users/{email}', () => {
             });
         });
     });
+
+    it('rejects an empty object', () => {
+        const user = UserFactory.create();
+        userService.create(user).then((c) => {
+            expect(c.status).to.eq(201);
+            userService.update(user.email, {}).then((r) => {
+                expect([400]).to.include(r.status);
+                expect(r.body).to.have.property('error').that.is.a('string');
+            });
+        });
+    });
+
+    it('allows or reports update with the same email (exploratory)', () => {
+        const user = UserFactory.create();
+        userService.create(user).then((c) => {
+            expect(c.status).to.eq(201);
+            userService.update(user.email, { ...user, name: 'Same email updated' }).then((r) => expect([200, 400, 409]).to.include(r.status));
+        });
+    });
+
+    it('explores handling of undocumented additional fields', () => {
+        const user = UserFactory.create();
+        userService.create(user).then((c) => {
+            expect(c.status).to.eq(201);
+            userService.update(user.email, { ...user, extraField: true }).then((r) => expect([200, 400]).to.include(r.status));
+        });
+    });
 });

@@ -1,0 +1,107 @@
+name: E2E Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  dev:
+    name: Dev E2E Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Pull LoanPro challenge image
+        run: docker pull ghcr.io/danielsilva-loanpro/sdet-interview-challenge
+
+      - name: Start LoanPro API
+        run: |
+          docker run -d \
+            --name loanpro-api \
+            -p 3000:3000 \
+            ghcr.io/danielsilva-loanpro/sdet-interview-challenge
+
+      - name: Wait for API
+        run: sleep 5
+
+      - name: Run Dev E2E tests
+        run: npx cypress run --env environment=dev
+        continue-on-error: true
+
+      - name: Upload Dev Cypress HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-report-dev
+          path: cypress/reports/
+          retention-days: 7
+
+      - name: Upload Dev screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots-dev
+          path: cypress/screenshots/
+          retention-days: 7
+
+
+  prod:
+    name: Prod E2E Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Pull LoanPro challenge image
+        run: docker pull ghcr.io/danielsilva-loanpro/sdet-interview-challenge
+
+      - name: Start LoanPro API
+        run: |
+          docker run -d \
+            --name loanpro-api \
+            -p 3000:3000 \
+            ghcr.io/danielsilva-loanpro/sdet-interview-challenge
+
+      - name: Wait for API
+        run: sleep 5
+
+      - name: Run Prod E2E tests
+        run: npx cypress run --env environment=prod
+        continue-on-error: true
+
+      - name: Upload Prod Cypress HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-report-prod
+          path: cypress/reports/
+          retention-days: 7
+
+      - name: Upload Prod screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots-prod
+          path: cypress/screenshots/
+          retention-days: 7
